@@ -6,11 +6,13 @@
 import threading
 import socket
 import time
+import signal
 
 SERVER_HOST = "18.224.190.128"    # IP of the server
 PORT = 7070
 
-active_chats = []
+active_chat = None
+new_chat = None
 
 # Thread for listening for messages from a specific location
 class Chat(threading.Thread):
@@ -51,13 +53,24 @@ class Listen(threading.Thread):
             # Accept connection
             conn, addr = self.sock.accept()
 
-            # Pass off to chat thread
-            if addr[0] not in active_chats and addr[0] != SERVER_HOST:
-                print("Starting new chat: " + addr[0])
-                chat = Chat(conn, addr, self.sock)
-                chat.start()
+            # New user wants to chat
+            if not active_chat or addr[0] != active_chat and addr[0] != SERVER_HOST:
+                print(addr[0] + " wants to chat!")
+                
+                response = None
+                while response not in ['y', 'Y', 'n', 'N']:
+                    response = input("Would you like to chat with them (Y/N)?\n>>")
 
-                active_chats.append(addr[0])
+                # If user wants to chat, pass off to thread
+                if response == 'Y' or response == 'y':
+                    print("Starting new chat: " + addr[0])
+                    chat = Chat(conn, addr, self.sock)
+                    chat.start()
+                    active_chat = addr[0]
+
+                elif response == 'N' or response == 'n':
+                    print("Ignoring...")
+                    continue
 
             # Don't create thread for server messages, just print them
             elif addr[0] == SERVER_HOST:
@@ -75,7 +88,11 @@ class Send(threading.Thread):
 
         while True:
             time.sleep(1)
-            self.ip = input("What IP would you like to connect to?\n>> ")
+
+            if active_chat != self.ip:
+                self.ip = active_chat
+            else:
+                self.ip = input("What IP would you like to connect to?\n>> ")
 
             # Create socket
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -94,8 +111,15 @@ class Send(threading.Thread):
                 # Get user input
                 msg = input(">> ")
 
+                # Disconnect
                 if msg == "disconnect":
                     break
+
+                # Connect to new chat if necessary
+                if active_chat != self.ip:
+                    self.ip = active_chat
+                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.sock.connect((self.ip, PORT))
 
                 # Send message
                 try:
