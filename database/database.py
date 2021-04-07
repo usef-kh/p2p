@@ -9,30 +9,25 @@ class Discovery:
         self.cursor = self.conn.cursor()
 
         # make table if not there
-        
-        command = 'CREATE TABLE IF NOT EXISTS discovery (id varchar(20) primary key, username text, password text, IP text, status text)'
+
+        command = 'CREATE TABLE IF NOT EXISTS discovery (username text, password text, IP text, status text)'
         self.cursor.execute(command)
-    
+
     def __contains__(self, username):
         command = 'SELECT * FROM discovery ' + \
                   f"WHERE username = '{username}'"
 
         self.cursor.execute(command)
         return len(self.cursor.fetchall())
-        #print(self.cursor.fetchall())
-        #self.conn.commit()
 
     def login(self, username, password):
         command = 'SELECT * FROM discovery ' + \
-            f"WHERE username = '{username}' AND password = '{password}'"
+                  f"WHERE username = '{username}' AND password = '{password}'"
 
         self.cursor.execute(command)
-        #print('in login')
-        #print(self.cursor.fetchall())
         return len(self.cursor.fetchall())
-    
-    def create_new_user(self, username, password, IP, status):
 
+    def create_new_user(self, username, password, IP, status):
         # check username in database
         if username in self:
             print('username exists')
@@ -55,16 +50,21 @@ class Discovery:
         self.cursor.execute(command)
         self.conn.commit()
 
+    def get_online_users(self):
+        self.cursor.execute("SELECT username, IP FROM discovery WHERE status = 'online'")
+        return self.cursor.fetchall()
+
     def print_all(self):
         self.cursor.execute("SELECT * FROM discovery")
         print(self.cursor.fetchall())
 
-if __name__=='__main__':
 
+if __name__ == '__main__':
     discovery = Discovery()
-    discovery.create_new_user('lin', 'lin', '000.000.000', 'offline')
+    discovery.create_new_user('yousif', 'password', '000.000.000', 'offline')
+    discovery.create_new_user('lin', 'password', '000.000.001', 'online')
+    discovery.create_new_user('mckenna', 'password', '000.000.001', 'online')
     discovery.print_all()
 
-    discovery.update_IP('lin', '0a.0a0.000', 'online')
-    discovery.print_all()
+    print(discovery.get_online_users())
 

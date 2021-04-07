@@ -6,11 +6,11 @@
 import threading
 import socket
 import time
-from database import database.Discovery
+from database.database import Discovery
 
 online_ips = []
 PORT = 7070
-discovery = Discovery()
+
 
 # Thread to handle the sign-in process for a new connection
 class SignIn(threading.Thread):
@@ -19,6 +19,7 @@ class SignIn(threading.Thread):
         super().__init__()
         self.conn = conn
         self.addr = addr
+        self.discovery = Discovery()
         self.login = False
 
     def run(self):
@@ -41,8 +42,6 @@ class SignIn(threading.Thread):
             request = "Please enter your password"
             self.conn.sendall(request.encode())
 
-            
-
             # Receive password
             data = self.conn.recv(1024)
             while not data:
@@ -57,27 +56,30 @@ class SignIn(threading.Thread):
             valid = 1
 
             # add the user in database or check the user
-            if username in discovery:
-                print("username found")
-                self.login = discovery.login(username, password)
-                if self.login:
-                    print("if login")
-                    discovery.update_IP(username, self.addr[0], 'online')
-                else:
-                    print("if not login")
-                    continue
-            else:
-                print("creating new user")
-                discovery.create_new_user(username, password, self.addr[0], 'online')
+            if username in self.discovery:
+                self.login = self.discovery.login(username, password)
 
-            online_ips.append(self.addr[0])
+                if self.login:
+                    print("Logging in")
+                    self.discovery.update_IP(username, self.addr[0], 'online')
+                else:
+                    print("Wrong Password or Username already taken")
+                    continue
+
+            else:
+                print("Creating new user")
+                self.discovery.create_new_user(username, password, self.addr[0], 'online')
+
             self.conn.sendall(str(valid).encode())
 
             # Sends info to all connected clients that this person has connected
             if valid:
                 time.sleep(1)
-                msg =  self.addr[0] + " is online"
-                for ip in online_ips:
+                msg = self.addr[0] + " is online"
+
+                online_users = self.discovery.get_online_users()
+
+                for username, ip in online_users:
 
                     if ip != self.addr[0]:
                         temp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,19 +97,16 @@ class Server(threading.Thread):
 
     def __init__(self):
         super().__init__()
- 
 
     def run(self):
-
         # Create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         print("Listening...")
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(('0.0.0.0', PORT))    # Use 0.0.0.0 if on ec2 instance
+        self.sock.bind(('0.0.0.0', PORT))  # Use 0.0.0.0 if on ec2 instance
 
         while True:
-
             # Listen for a connection
             self.sock.listen()
 
@@ -119,8 +118,8 @@ class Server(threading.Thread):
             s = SignIn(conn, addr)
             s.start()
 
-if __name__=='__main__':
 
+if __name__ == '__main__':
     server = Server()
     server.start()
     server.join()
