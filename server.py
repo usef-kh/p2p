@@ -3,9 +3,10 @@
 # P2P Server
 # =================================================
 
-import threading
 import socket
+import threading
 import time
+
 from database.database import Discovery
 
 online_ips = []
@@ -19,10 +20,11 @@ class SignIn(threading.Thread):
         super().__init__()
         self.conn = conn
         self.addr = addr
-        self.discovery = Discovery()
+
         self.login = False
 
     def run(self):
+        self.discovery = Discovery()
         while not self.login:
             # Send request for username
             request = "Please enter your username"
@@ -52,9 +54,6 @@ class SignIn(threading.Thread):
             password = data.decode()
             print("Password received: ", password)
 
-            # For now, accepts whatever is sent
-            valid = 1
-
             # add the user in database or check the user
             if username in self.discovery:
                 self.login = self.discovery.login(username, password)
@@ -69,6 +68,9 @@ class SignIn(threading.Thread):
             else:
                 print("Creating new user")
                 self.discovery.create_new_user(username, password, self.addr[0], 'online')
+
+            # For now, accepts whatever is sent
+            valid = 1
 
             self.conn.sendall(str(valid).encode())
 
