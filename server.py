@@ -68,6 +68,7 @@ class SignIn(threading.Thread):
             else:
                 print("Creating new user")
                 self.discovery.create_new_user(username, password, self.addr[0], 'online')
+                self.login = 1
 
             # For now, accepts whatever is sent
             valid = 1
