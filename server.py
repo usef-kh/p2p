@@ -21,85 +21,78 @@ class SignIn(threading.Thread):
         self.conn = conn
         self.addr = addr
 
-        self.login = False
+    def get_data(self, request):
+        self.conn.sendall(request.encode())
+
+        data = self.conn.recv(1024)
+        while not data:
+            self.conn.sendall(request.encode())
+            data = self.conn.recv(1024)
+
+        return data.decode()
 
     def run(self):
-        self.discovery = Discovery()
-        while not self.login:
+
+        logged_in = False
+        discovery = Discovery()
+
+        while not logged_in:
+
             # Send request for username
             request = "Please enter your username"
-            self.conn.sendall(request.encode())
+            username = self.get_data(request)
 
-            # Receive username
-            data = self.conn.recv(1024)
-            while not data:
-                self.conn.sendall(request.encode())
-                data = self.conn.recv(1024)
-
-            # store in username var
-            username = data.decode()
             print("Username received: ", username)
 
             # Send request for password
             request = "Please enter your password"
-            self.conn.sendall(request.encode())
+            password = self.get_data(request)
 
-            # Receive password
-            data = self.conn.recv(1024)
-            while not data:
-                self.conn.sendall(request.encode())
-                data = self.conn.recv(1024)
-
-            # store in password var
-            password = data.decode()
             print("Password received: ", password)
 
-            # add the user in database or check the user
-            if username in self.discovery:
-                self.login = self.discovery.login(username, password)
+            # Verify or create user
+            if username in discovery:
+                logged_in = discovery.login(username, password)
 
-                if self.login:
+                if logged_in:
                     print("Logging in")
-                    self.discovery.update_IP(username, self.addr[0], 'online')
+                    discovery.update_IP(username, self.addr[0], 'online')
                 else:
                     print("Wrong Password or Username already taken")
                     continue
 
             else:
                 print("Creating new user")
-                self.discovery.create_new_user(username, password, self.addr[0], 'online')
-                self.login = 1
+                discovery.create_new_user(username, password, self.addr[0], 'online')
+                logged_in = True
 
-            # For now, accepts whatever is sent
-            valid = 1
+        # For now, accepts whatever is sent
+        valid = 1
 
-            self.conn.sendall(str(valid).encode())
+        self.conn.sendall(str(valid).encode())
 
-            # Sends info to all connected clients that this person has connected
-            if valid:
-                time.sleep(1)
-                msg = self.addr[0] + " is online"
+        # Sends info to all connected clients that this person has connected
+        if valid:
+            time.sleep(1)
+            msg = self.addr[0] + " is online"
 
-                online_users = self.discovery.get_online_users()
+            online_users = discovery.get_online_users()
 
-                for username, ip in online_users:
+            for username, ip in online_users:
 
-                    if ip != self.addr[0]:
-                        temp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        temp_sock.connect((ip, PORT))
-                        temp_sock.sendall(msg.encode())
+                if ip != self.addr[0]:
+                    temp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    temp_sock.connect((ip, PORT))
+                    temp_sock.sendall(msg.encode())
 
-                        # Send list of currently connected IPs to new connection
-                        msg2 = ip + " is online"
-                        temp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        temp_sock.connect((self.addr[0], PORT))
-                        temp_sock.sendall(msg2.encode())
+                    # Send list of currently connected IPs to new connection
+                    msg2 = f"{username} is online at {ip}"
+                    temp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    temp_sock.connect((self.addr[0], PORT))
+                    temp_sock.sendall(msg2.encode())
 
 
 class Server(threading.Thread):
-
-    def __init__(self):
-        super().__init__()
 
     def run(self):
         # Create socket

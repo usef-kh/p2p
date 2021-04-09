@@ -8,12 +8,13 @@ import socket
 import time
 import signal
 
-SERVER_HOST = "18.224.190.128"    # IP of the server
+SERVER_HOST = "18.224.190.128"  # IP of the server
 PORT = 7070
 
 active_chat = None
 new_chat = None
 created = 1
+
 
 # Thread for listening for messages from a specific location
 class Chat(threading.Thread):
@@ -46,10 +47,10 @@ class Listen(threading.Thread):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(('0.0.0.0', PORT))    # Use 0.0.0.0 if on ec2 instance
+        self.sock.bind(('0.0.0.0', PORT))  # Use 0.0.0.0 if on ec2 instance
 
         while True:
-            
+
             # Listen for a connection
             self.sock.listen()
 
@@ -59,7 +60,7 @@ class Listen(threading.Thread):
             # New user wants to chat
             if (not active_chat or addr[0] != active_chat) and addr[0] != SERVER_HOST:
                 print(addr[0] + " wants to chat! Would you like to chat with them? Answer with Y or N.")
-                
+
                 # Wait for user response in other thread
                 new_chat = 1
                 while new_chat == 1:
@@ -179,7 +180,7 @@ class Send(threading.Thread):
 
                 # Send message
                 try:
-                    #self.sock.connect((self.ip, PORT))
+                    # self.sock.connect((self.ip, PORT))
                     self.sock.sendall(msg.encode())
                 except:
                     print("Something has gone wrong.")
@@ -188,7 +189,6 @@ class Send(threading.Thread):
 
 # Communicates with the server to sign the user in
 def SignIn():
-
     # Create socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -202,7 +202,7 @@ def SignIn():
         # Get message from server
         msg = sock.recv(1024)
 
-        if (msg.decode() != "1"):
+        if msg.decode() != "1":
 
             print(msg.decode())
 
@@ -217,10 +217,9 @@ def SignIn():
             return 1
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
 
     if SignIn():
-
         listen = Listen()
         listen.start()
 
