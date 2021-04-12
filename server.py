@@ -94,13 +94,31 @@ class SignIn(threading.Thread):
 
 class Server(threading.Thread):
 
+    def __init__(self):
+        super().__init__()
+        self.conn = None
+
+    def get_data(self, request):
+        self.conn.sendall(request.encode())
+
+        data = self.conn.recv(1024)
+        while not data:
+            self.conn.sendall(request.encode())
+            data = self.conn.recv(1024)
+
+        return data.decode()
+
+
     def run(self):
+
         # Create socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         print("Listening...")
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(('0.0.0.0', PORT))  # Use 0.0.0.0 if on ec2 instance
+
+        discovery = Discovery()
 
         while True:
             # Listen for a connection
@@ -109,10 +127,27 @@ class Server(threading.Thread):
             # Accept connection
             conn, addr = self.sock.accept()
             print("Connection from: ", addr[0])
+            self.conn = conn
 
-            # Pass connection off to sign-in thread and keep listening
-            s = SignIn(conn, addr)
-            s.start()
+            response = get_data("?")
+            if response == "login":
+
+                # Pass connection off to sign-in thread and keep listening
+                s = SignIn(conn, addr)
+                s.start()
+
+            elif response.find("ip") != -1:
+                username = response.split('-')[1].strip()
+                ip = discovery.convert_Username_to_IP(username)
+                if ip:
+                    self.conn.sendall(ip.encode())
+                else:
+                    print("Username not found")
+                    msg = "Not found"
+                    self.conn.sendall(msg.encode())
+
+
+
 
 
 if __name__ == '__main__':
