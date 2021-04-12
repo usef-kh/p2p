@@ -20,6 +20,7 @@ once = 0            # Flag for communicating across threads: makes sure handshak
 disconnect = 0      # Flag for communicating across threads: lets Send() thread know that user has disconnected
 
 
+
 # Thread for listening for messages from a specific location
 class Chat(threading.Thread):
 
@@ -72,7 +73,7 @@ class Chat(threading.Thread):
 
                 if msg.decode() == "Left":
                     print("The user has left the chat.")
-                    print("What IP would you like to connect to?\n>> ")
+                    print("What username would you like to connect to?\n>> ")
                     prev_chat = active_chat
                     active_chat = None
                     handshake = 0
@@ -153,7 +154,22 @@ class Send(threading.Thread):
 
     def __init__(self):
         super().__init__()
+        self.username = None
         self.ip = None
+
+    def get_ip(username):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((SERVER_HOST, PORT))
+        msg = sock.recv(1024)
+        if msg.decode() == '?':
+            request = "ip - " + username
+            sock.sendall(request)
+            msg = sock.recv(1024)
+            if msg.decode() != "Not found":
+                return msg.decode()
+            else:
+                print("Username was not found")
+                return False
 
     # Run sending thread
     def run(self):
@@ -173,11 +189,12 @@ class Send(threading.Thread):
             if not self.ip:
 
                 # Ask for an IP
-                response = input("What IP would you like to connect to?\n>> ")
+                response = input("What username would you like to connect to?\n>> ")
 
                 # If response is an IP, save it
                 if not new_chat:
-                    self.ip = response
+                    self.username = response
+                    self.ip = get_ip(response)
                     handshake = 0
 
                 else:
@@ -227,7 +244,8 @@ class Send(threading.Thread):
 
                 # Get new IP
                 if not active_chat and not new_chat:
-                    self.ip = response
+                    self.username = response
+                    self.ip = get_ip(response)
                     active_chat = self.ip
                     handshake = 0
                     break
@@ -269,6 +287,7 @@ class Send(threading.Thread):
                 if active_chat and active_chat != self.ip:
                     self.ip = active_chat
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.ip = get_ip(self.ip)
                     self.sock.connect((self.ip, PORT))
 
                     if not handshake:
@@ -309,13 +328,18 @@ def SignIn():
 
         if msg.decode() != "1":
 
-            print(msg.decode())
+            if msg.decode() != '?':
+                print(msg.decode())
 
-            # Get user input
-            msg = input(">> ")
+                # Get user input
+                msg = input(">> ")
 
-            # Send message
-            sock.sendall(msg.encode())
+                # Send message
+                sock.sendall(msg.encode())
+
+            else:
+                request = "login"
+                sock.sendall(request.encode())
 
         # Sign-in was successful
         else:
