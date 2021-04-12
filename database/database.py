@@ -65,7 +65,7 @@ class Discovery:
 
         result = self.cursor.fetchall()
         if len(result) == 1:
-            return result[0]
+            return result[0][0]
         else:
             return False
 
@@ -74,7 +74,7 @@ class Discovery:
 
         result = self.cursor.fetchall()
         if len(result) == 1:
-            return result[0]
+            return result[0][0]
         else:
             return False
 

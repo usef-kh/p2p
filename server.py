@@ -129,7 +129,7 @@ class Server(threading.Thread):
             print("Connection from: ", addr[0])
             self.conn = conn
 
-            response = get_data("?")
+            response = self.get_data("?")
             if response == "login":
 
                 # Pass connection off to sign-in thread and keep listening
@@ -139,6 +139,7 @@ class Server(threading.Thread):
             elif response.find("ip") != -1:
                 username = response.split('-')[1].strip()
                 ip = discovery.convert_Username_to_IP(username)
+                print(ip)
                 if ip:
                     self.conn.sendall(ip.encode())
                 else:

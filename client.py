@@ -21,6 +21,7 @@ disconnect = 0      # Flag for communicating across threads: lets Send() thread 
 
 
 
+
 # Thread for listening for messages from a specific location
 class Chat(threading.Thread):
 
@@ -29,6 +30,20 @@ class Chat(threading.Thread):
         self.conn = conn
         self.addr = addr
         self.sock = sock
+
+    def get_ip(self, username):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((SERVER_HOST, PORT))
+        msg = sock.recv(1024)
+        if msg.decode() == '?':
+            request = "ip - " + username
+            sock.sendall(request.encode())
+            msg = sock.recv(1024)
+            if msg.decode() != "Not found":
+                return msg.decode()
+            else:
+                print("Username was not found")
+                return False
 
     def run(self):
 
@@ -80,6 +95,11 @@ class Chat(threading.Thread):
                     break
 
                 else:
+
+                    #==============================================
+                    # Storing messages that you receive
+                    #==============================================
+
                     print(self.addr[0] + ": " + msg.decode())
                     print(">> ")
 
@@ -157,13 +177,13 @@ class Send(threading.Thread):
         self.username = None
         self.ip = None
 
-    def get_ip(username):
+    def get_ip(self, username):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((SERVER_HOST, PORT))
         msg = sock.recv(1024)
         if msg.decode() == '?':
             request = "ip - " + username
-            sock.sendall(request)
+            sock.sendall(request.encode())
             msg = sock.recv(1024)
             if msg.decode() != "Not found":
                 return msg.decode()
@@ -194,7 +214,7 @@ class Send(threading.Thread):
                 # If response is an IP, save it
                 if not new_chat:
                     self.username = response
-                    self.ip = get_ip(response)
+                    self.ip = self.get_ip(response)
                     handshake = 0
 
                 else:
@@ -226,6 +246,11 @@ class Send(threading.Thread):
                         print("Sorry, they do not want to chat with you.")
                         active_chat = None
                         self.ip = None
+
+                        #==============================================
+                        # Person is rejected, can prompt them to add messages
+                        # that will be stored
+                        #==============================================
                         continue
                     elif response.decode() == "Yes":
                         print("Connected to: ", self.ip)
@@ -245,7 +270,7 @@ class Send(threading.Thread):
                 # Get new IP
                 if not active_chat and not new_chat:
                     self.username = response
-                    self.ip = get_ip(response)
+                    self.ip = self.get_ip(response)
                     active_chat = self.ip
                     handshake = 0
                     break
@@ -269,6 +294,7 @@ class Send(threading.Thread):
                         else:
                             active_chat = None
                             self.ip = None
+
                     break
 
                 # Disconnect
@@ -287,7 +313,7 @@ class Send(threading.Thread):
                 if active_chat and active_chat != self.ip:
                     self.ip = active_chat
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    self.ip = get_ip(self.ip)
+                    self.ip = self.get_ip(self.ip)
                     self.sock.connect((self.ip, PORT))
 
                     if not handshake:
@@ -305,6 +331,10 @@ class Send(threading.Thread):
 
                 # Send message
                 try:
+                    #==============================================
+                    # Messages that are sent and received 
+                    #==============================================
+
                     self.sock.sendall(msg.encode())
                 except:
                     print("Something has gone wrong.")
