@@ -64,6 +64,10 @@ class Discovery:
         self.cursor.execute(f"SELECT username FROM discovery WHERE IP = '{IP}'")
         return self.cursor.fetchall()
 
+    def convert_Username_to_IP(self, username):
+        self.cursor.execute(f"SELECT IP FROM discovery WHERE username = '{username}'")
+        return self.cursor.fetchall()[0]
+
     def print_all(self):
         self.cursor.execute("SELECT * FROM discovery")
         print(self.cursor.fetchall())
