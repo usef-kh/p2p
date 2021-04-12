@@ -62,11 +62,19 @@ class Discovery:
 
     def convert_IP_to_Username(self, IP):
         self.cursor.execute(f"SELECT username FROM discovery WHERE IP = '{IP}'")
-        return self.cursor.fetchall()
+
+        if len(self.cursor.fetchall()) == 1:
+            return self.cursor.fetchall()[0]
+        else:
+            return False
 
     def convert_Username_to_IP(self, username):
         self.cursor.execute(f"SELECT IP FROM discovery WHERE username = '{username}'")
-        return self.cursor.fetchall()[0]
+
+        if len(self.cursor.fetchall()) == 1:
+            return self.cursor.fetchall()[0]
+        else:
+            return False
 
     def print_all(self):
         self.cursor.execute("SELECT * FROM discovery")
