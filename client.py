@@ -6,6 +6,9 @@
 import socket
 import threading
 import time
+import sys
+import os
+import signal
 
 import requests
 
@@ -14,15 +17,13 @@ from database.database import ChatHistory
 SERVER_HOST = "18.224.190.128"  # IP of the server
 PORT = 7070
 
-active_chat = None  # IP of the active chat
-new_chat = None  # Flag for communicating across threads if new chat has been started
-created = 1  # Flag for communicating across threads:
-# tells Listen() thread if a Chat() thread needs to be created
-handshake = 0  # Flag for communicating across threads: indicates if handshake for chat has been made
-once = 0  # Flag for communicating across threads: makes sure handshake message is only displayed once
-disconnect = 0  # Flag for communicating across threads: lets Send() thread know that user has disconnected
-
-all_msg = {}  # Global list to store all chat history
+active_chat = None    # IP of the active chat
+new_chat = None       # Flag for communicating across threads if new chat has been started
+created = 1           # Flag for communicating across threads:
+                      # tells Listen() thread if a Chat() thread needs to be created
+handshake = 0         # Flag for communicating across threads: indicates if handshake for chat has been made
+once = 0              # Flag for communicating across threads: makes sure handshake message is only displayed once
+disconnect = 0        # Flag for communicating across threads: lets Send() thread know that user has disconnected
 
 my_ip = requests.get('https://api.ipify.org').text
 my_username = None
@@ -39,8 +40,7 @@ def get_ip(username):
         if msg.decode() != "Not found":
             return msg.decode()
         else:
-            print("Username was not found")
-            return False
+            return None
 
 
 def get_username(ip):
@@ -54,9 +54,49 @@ def get_username(ip):
         if msg.decode() != "Not found":
             return msg.decode()
         else:
-            print("Username was not found")
-            return False
+            print("Invalid IP")
+            return None
 
+
+# Talks to server to check if ip is connected
+def is_online(username):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((SERVER_HOST, PORT))
+    msg = sock.recv(1024)
+    if msg.decode() == '?':
+        request = "online - " + username
+        sock.sendall(request.encode())
+        msg = sock.recv(1024)
+        if msg.decode() == "0":
+            #print("User is not online")
+            return False
+        else:
+            #print("User is online")
+            return True
+
+# Tells server that you are no longer online
+def offline():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((SERVER_HOST, PORT))
+    msg = sock.recv(1024)
+    if msg.decode() == '?':
+        request = "offline - " + my_ip
+        sock.sendall(request.encode())
+
+def is_username(username):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((SERVER_HOST, PORT))
+    msg = sock.recv(1024)
+    if msg.decode() == '?':
+        request = "exists - " + username
+        sock.sendall(request.encode())
+        msg = sock.recv(1024)
+        if msg.decode() == "0":
+            print("This is not a valid username.")
+            return False
+        else:
+            #print("User is online")
+            return True
 
 # Thread for listening for messages from a specific location
 class Chat(threading.Thread):
@@ -66,12 +106,15 @@ class Chat(threading.Thread):
         self.conn = conn
         self.addr = addr
         self.sock = sock
-        self.username = None
+        self.username = get_username(self.addr[0])
 
     def run(self):
 
         global active_chat, created, handshake, new_chat, once, disconnect
         created = 1
+
+        # Create db connection
+        history = ChatHistory(my_username, self.username)
 
         # Receive messages
         while True:
@@ -84,12 +127,12 @@ class Chat(threading.Thread):
                     once = 1
 
                     # Check if user wants to connect again
-                    print(self.addr[0] + " wants to chat! Would you like to chat with them? Answer with Y or N.")
+                    print(self.username + " wants to chat! Would you like to chat with them? Answer with Y or N.")
 
                     # Wait for user response in other thread
                     new_chat = 1
                     while new_chat == 1:
-                        time.sleep(1)
+                        time.sleep(0.1)
 
                     once = 0
                     # If user wants to chat, respond "Yes", and keep listening
@@ -99,8 +142,6 @@ class Chat(threading.Thread):
                         self.conn.sendall(msg.encode())
                         active_chat = self.addr[0]
                         handshake = 1
-
-
 
                     # If user doesn't want to chat, respond "No", and exit thread
                     else:
@@ -125,18 +166,14 @@ class Chat(threading.Thread):
                     # Storing messages that you receive
                     # ==============================================
 
-                    # Who am I talking to
-                    self.username = get_username(self.addr[0])
-
-                    # i hate the fact that we are making a new instance with every message
-                    history = ChatHistory(my_username, self.username)
-
                     message = msg.decode()  # extract message
-                    history.add_message(self.username, my_username, message, 'read')  # store in db
-                    print(self.username + ": " + message)  # show message
-                    print(">> ")
-
-                    all_msg['history'] = msg.decode()  # store as a key-value in global all_msg
+                    if message == "intro":
+                        print("\nHere are all the messsages you missed:")
+                    else:
+                        history.add_message(self.username, my_username, message, 'read')  # store in db
+                        print(self.username + ": " + message)  # show message
+                        if message.find('2021') == -1:
+                            print(">> ")
 
 
 # Thread for listening for new connections
@@ -164,12 +201,14 @@ class Listen(threading.Thread):
             # New user wants to chat
             if (not active_chat or addr[0] != active_chat) and addr[0] != SERVER_HOST and not once:
                 once = 1
-                print(addr[0] + " wants to chat! Would you like to chat with them? Answer with Y or N.")
+
+                username = get_username(addr[0])
+                print(username + " wants to chat! Would you like to chat with them? Answer with Y or N.")
 
                 # Wait for user response in other thread
                 new_chat = 1
                 while new_chat == 1:
-                    time.sleep(1)
+                    time.sleep(0.1)
 
                 once = 0
                 # If user wants to chat, respond "Yes", and pass off to thread
@@ -178,6 +217,7 @@ class Listen(threading.Thread):
                     msg = "Yes"
                     conn.sendall(msg.encode())
                     chat = Chat(conn, addr, self.sock)
+                    chat.daemon = True
                     chat.start()
                     active_chat = addr[0]
                     handshake = 1
@@ -192,6 +232,7 @@ class Listen(threading.Thread):
             # Start a chat thread for a chat initialized by the Send() thread
             elif active_chat == addr[0] and not created:
                 chat = Chat(conn, addr, self.sock)
+                chat.daemon = True
                 chat.start()
                 active_chat = addr[0]
                 created = 1
@@ -199,8 +240,7 @@ class Listen(threading.Thread):
             # Don't create thread for server messages, just print them
             elif addr[0] == SERVER_HOST:
                 msg = conn.recv(1024)
-                print(addr[0] + ": " + msg.decode())
-                print(">> ")
+                print(f"SERVER: {msg.decode()}")
 
 
 # Thread for sending messages
@@ -211,14 +251,70 @@ class Send(threading.Thread):
         super().__init__()
         self.username = None
         self.ip = None
+        self.backlog = False
+
+    def send_backlog(self):
+        history = ChatHistory(my_username, self.username)
+        messages = history.get_all_unread(self.username)
+
+        if len(messages) > 0:
+            intro = "intro"
+            self.sock.sendall(intro.encode())
+
+            for msg in messages:
+                time.sleep(0.1)
+                full_msg = msg[2] + ": " + msg[1]
+                self.sock.sendall(full_msg.encode())
+                history.mark_read(msg[0])
+                
 
     # Run sending thread
     def run(self):
 
         global new_chat, active_chat, created, handshake, prev_chat
 
+        time.sleep(1)
         while True:
-            time.sleep(1)
+            time.sleep(0.5)
+
+            
+            if self.backlog:
+                msg = input(">> ")
+
+                if msg == "exit":
+                    os.kill(os.getpid(), signal.SIGINT)
+                    time.sleep(1)
+
+                # Store message in database
+                if not new_chat:
+
+                    if msg == "disconnect":
+                        self.backlog = False
+                        self.ip = None
+                        self.username = None
+                    else:
+                        history = ChatHistory(my_username, self.username)
+                        history.add_message(my_username, self.username, msg, 'unread')
+
+                    continue
+
+                else:
+                    # Responding to chat request
+                    while response not in ['y', 'Y', 'n', 'N']:
+                        response = input("Please respond with Y or N.\n>> ")
+
+                        if response == "exit":
+                            os.kill(os.getpid(), signal.SIGINT)
+                            time.sleep(1)
+
+                    if response in ['y', 'Y']:
+                        new_chat = 2
+                        self.backlog = False
+                    else:
+                        new_chat = 0
+                        active_chat = self.ip
+                    continue
+
 
             # Check for new IP
             if not active_chat:
@@ -226,23 +322,40 @@ class Send(threading.Thread):
 
             elif active_chat:
                 self.ip = active_chat
+                self.username = get_username(self.ip)
 
             if not self.ip:
 
-                # Ask for an IP
+                # Ask for a username
                 response = input("What username would you like to connect to?\n>> ")
 
-                # If response is an IP, save it
+                if response == "exit":
+                    os.kill(os.getpid(), signal.SIGINT)
+                    time.sleep(1)
+
+                # If response is a username, save it
                 if not new_chat:
-                    self.username = response
-                    self.ip = get_ip(response)
+
+                    # Check if valid username
+                    if not is_username(response):
+                        print("Please try again.")
+                        continue
+                    else:
+                        self.ip = get_ip(response)
+                        self.username = response
+
                     handshake = 0
 
                 else:
 
                     # Responding to chat request
                     while response not in ['y', 'Y', 'n', 'N']:
-                        response = input("Please respond with Y or N.\n")
+                        response = input("Please respond with Y or N.\n>> ")
+
+                        if response == "exit":
+                            os.kill(os.getpid(), signal.SIGINT)
+                            time.sleep(1)
+
                     if response in ['y', 'Y']:
                         new_chat = 2
                     else:
@@ -254,41 +367,58 @@ class Send(threading.Thread):
             # Create socket
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-            # Connect to target IP
-            print("Connecting to: ", self.ip)
-            try:
-                self.sock.connect((self.ip, PORT))
-                active_chat = self.ip
-                created = 0
+            # Check if user is online
+            if is_online(self.username):
 
-                if not handshake:
-                    # Wait to find out if user wants to chat or not
-                    response = self.sock.recv(1024)
-                    if response.decode() == "No":
-                        print("Sorry, they do not want to chat with you.")
-                        active_chat = None
-                        self.ip = None
+                # If they are, get IP and connect
+                self.ip = get_ip(self.username)
+                print(f"\nConnecting to: {self.username}")
+                try:
+                    self.sock.connect((self.ip, PORT))
+                    created = 0
 
-                        # ==============================================
-                        # Person is rejected, can prompt them to add messages
-                        # that will be stored
-                        # ==============================================
-                        # Get user input
-                        print("Please leave a message to him/her.")
-                        leaved_msg = input(">> ")
-                        # the leaved msg will be stored in global all_msg
-                        all_msg['leaved'] = leaved_msg
+                    # Ask user if they want to chat
+                    if not handshake:
+                        # Wait to find out if user wants to chat or not
+                        response = self.sock.recv(1024)
+                        if response.decode() == "No":
+                            print("Sorry, they do not want to chat with you.")
+                            active_chat = None
 
-                        continue
+                            # ==============================================
+                            # Person is rejected, can prompt them to add messages
+                            # that will be stored
+                            # ==============================================
+                            print("You can type messages now to be delivered the next time you connect.")
+                            print("Enter 'disconnect' to stop storing messages for this user.")
+                            self.backlog = True
+                            continue
 
-                    elif response.decode() == "Yes":
-                        print("Connected to: ", self.ip)
-                else:
-                    print("Connected to: ", self.ip)
+                        elif response.decode() == "Yes":
+                            active_chat = self.ip
+                            print(f"Connected to: {self.username}\n")
+                            # Send any backlog messages
+                            self.send_backlog()
 
-            except:
-                print("Unable to connect. Please try again.")
-                active_chat = None
+                    # User has already agreed to chat
+                    else:
+                        active_chat = self.ip
+                        print(f"Connected to: {self.username}\n")
+                        
+                        # Send any backlog messages
+                        self.send_backlog()
+
+                except:
+                    print("Unable to connect. Please try again.")
+                    active_chat = None
+                    continue
+
+            # User is not online, backlog messages
+            else:
+                print("That user is offline.")
+                print("You can type messages now to be delivered the next time you connect.")
+                print("Enter 'disconnect' to stop storing messages for this user.")
+                self.backlog = True
                 continue
 
             while True:
@@ -296,11 +426,21 @@ class Send(threading.Thread):
                 # Get user input
                 response = input(">> ")
 
+                if response == "exit":
+                    os.kill(os.getpid(), signal.SIGINT)
+                    time.sleep(1)
+
                 # Get new IP
                 if not active_chat and not new_chat:
-                    self.username = response
-                    self.ip = get_ip(response)
-                    active_chat = self.ip
+
+                    # Check if valid username
+                    if not is_username(response):
+                        print("Please try again.")
+                    else:
+                        self.ip = get_ip(response)
+                        self.username = response
+                        active_chat = self.ip
+
                     handshake = 0
                     break
 
@@ -311,15 +451,20 @@ class Send(threading.Thread):
                 else:
                     # Responding to chat request
                     while response not in ['y', 'Y', 'n', 'N']:
-                        response = input("Please respond with Y or N.")
+                        response = input("Please respond with Y or N.\n>> ")
+
+                        if response == "exit":
+                            os.kill(os.getpid(), signal.SIGINT)
+                            time.sleep(1)
+
                     if response in ['y', 'Y']:
                         new_chat = 2
-                        time.sleep(1)
                     else:
                         new_chat = 0
 
                         if handshake:
                             active_chat = self.ip
+                            self.username = get_username(self.ip)
                         else:
                             active_chat = None
                             self.ip = None
@@ -335,45 +480,62 @@ class Send(threading.Thread):
                     msg = "Left"
                     self.sock.sendall(msg.encode())
                     self.ip = None
+                    self.username = None
+                    self.backlog = None
 
                     break
 
                 # Connect to new chat if necessary
                 if active_chat and active_chat != self.ip:
-                    self.ip = active_chat
-                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    self.ip = get_ip(self.ip)
-                    self.sock.connect((self.ip, PORT))
 
-                    if not handshake:
-                        # Wait to find out if user wants to chat or not
-                        response = self.sock.recv(1024)
-                        if response.decode() == "No":
-                            print("Sorry, they do not want to chat with you.")
-                            active_chat = None
-                            self.ip = None
-                            break
-                        elif response.decode() == "Yes":
-                            print(f"Connected to: {self.username} at {self.ip}")
+                    if is_online(self.username):
+
+                        self.ip = active_chat
+                        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        self.ip = get_ip(self.username)
+                        self.sock.connect((self.ip, PORT))
+
+                        if not handshake:
+                            # Wait to find out if user wants to chat or not
+                            response = self.sock.recv(1024)
+                            if response.decode() == "No":
+                                print("Sorry, they do not want to chat with you.")
+                                active_chat = None
+                                print("You can type messages now to be delivered the next time you connect.")
+                                print("Enter 'disconnect' to stop storing messages for this user.")
+                                self.backlog = True
+
+                                break
+                            elif response.decode() == "Yes":
+                                print(f"Connected to: {self.username}\n")
+                                
+                                # Send any backlog messages
+                                self.send_backlog()
+
+                        else:
+                            print(f"Connected to: {self.username}\n")
+
+                            # Send any backlog messages
+                            self.send_backlog()
                     else:
-
-                        # history = ChatHistory(my_username, self.username)
-                        print(f"Connected to: {self.username} at {self.ip}")
+                        print("You can type messages now to be delivered the next time you connect.")
+                        print("Enter 'disconnect' to stop storing messages for this user.")
+                        self.backlog = True
+                        break
 
                 # Send message
                 try:
-                    # ==============================================
-                    # Messages that are sent and received 
-                    # ==============================================
-                    for i, j in all_msg.items():
-                        print('{}: {}'.format(i, j))
 
+                    # Log message in chat history
                     history = ChatHistory(my_username, self.username)
                     self.sock.sendall(msg.encode())
                     history.add_message(my_username, self.username, msg, 'read')
 
                 except:
-                    print("Something has gone wrong.")
+                    print("Something has gone wrong. The other user may have disconnected.")
+                    active_chat = None
+                    self.ip = None
+                    self.username = None
                     break
 
 
@@ -384,10 +546,15 @@ def SignIn():
     # Create socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    print("\n----------------------------------------------------")
+    print("|             Welcome to our P2P chat!             |")
+    print("|  To quit at any time, use ctrl+C or type 'exit'  |")
+    print("----------------------------------------------------\n")
+
     # Connect to server
-    print("Connecting to: ", SERVER_HOST)
+    print("Connecting to server...")
     sock.connect((SERVER_HOST, PORT))
-    print("Connected to: ", SERVER_HOST)
+    print("Connected to server\n")
 
     while True:
 
@@ -401,6 +568,10 @@ def SignIn():
 
                 # Get user input
                 msg = input(">> ")
+
+                if msg == "exit":
+                    os.kill(os.getpid(), signal.SIGINT)
+                    time.sleep(1)
 
                 # Send message
                 sock.sendall(msg.encode())
@@ -419,12 +590,21 @@ def SignIn():
 
 if __name__ == '__main__':
 
-    if SignIn():
-        listen = Listen()
-        listen.start()
+    try:
+        if SignIn():
 
-        send = Send()
-        send.start()
+            listen = Listen()
+            listen.daemon = True
+            listen.start()
 
-        listen.join()
-        send.join()
+            send = Send()
+            send.daemon = True
+            send.start()
+
+            listen.join()
+            send.join()
+
+    except KeyboardInterrupt:
+        print("Signing out...")
+        offline()
+        sys.exit()

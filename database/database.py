@@ -26,7 +26,15 @@ class Discovery:
         self.cursor.execute(command)
         return len(self.cursor.fetchall())
 
-    def login(self, username, password):
+    def login(self, username, password, IP):
+
+        # If anyone is logged in at this IP, log them out.
+        command = 'update discovery ' + \
+                  f"SET status = 'offline'" + \
+                  f"WHERE IP = '{IP}'"
+
+        self.cursor.execute(command)
+
         command = 'SELECT * FROM discovery ' + \
                   f"WHERE username = '{username}' AND password = '{password}'"
 
@@ -81,7 +89,6 @@ class Discovery:
         self.cursor.execute(f"SELECT IP FROM discovery WHERE username = '{username}' AND status = 'online'")
 
         result = self.cursor.fetchall()
-
         if len(result) == 1:
             return result[0][0]
         else:
@@ -90,6 +97,22 @@ class Discovery:
     def print_all(self):
         self.cursor.execute("SELECT * FROM discovery")
         print(self.cursor.fetchall())
+
+    def mark_offline(self, ip):
+        status = "offline"
+        command = 'update discovery ' + \
+                  f"SET status = '{status}'  " + \
+                  f"WHERE IP = '{ip}'"
+
+        self.cursor.execute(command)
+        self.conn.commit()
+
+    def is_username(self, username):
+        if username in self:
+            return True
+        return False
+
+
 
 
 class ChatHistory:
@@ -177,47 +200,51 @@ class ChatHistory:
 
 
 if __name__ == '__main__':
-    # discovery = Discovery()
-    # discovery.create_new_user('yousif', 'password', '000.000.000', 'offline')
-    # discovery.create_new_user('lin', 'password', '000.000.001', 'online')
-    # discovery.create_new_user('mckenna', 'password', '000.000.001', 'online')
-    # discovery.print_all()
+     discovery = Discovery()
+     discovery.create_new_user('yousif', 'password', '000.000.000', 'offline')
+     discovery.create_new_user('lin', 'password', '000.000.001', 'online')
+     discovery.create_new_user('mckenna', 'password', '000.000.002', 'online')
+     discovery.print_all()
+     discovery.mark_offline('000.000.002')
+     discovery.print_all()
 
-    chat = ChatHistory('yousif', 'lin')
+     print(discovery.convert_IP_to_Username('000.000.002'))
 
-    chat.add_message('lin', 'yousif', "first messgae", 'read')
-    chat.add_message('lin', 'yousif', "another message", 'read')
+    #chat = ChatHistory('yousif', 'lin')
 
-    chat.add_message('yousif', 'lin', "hihihi", 'read')
+    #chat.add_message('lin', 'yousif', "first messgae", 'read')
+    #chat.add_message('lin', 'yousif', "another message", 'read')
 
-    chat.add_message('yousif', 'lin', "....................", 'unread')
+    #chat.add_message('yousif', 'lin', "hihihi", 'read')
 
-    chat.add_message('lin', 'yousif', "hey how are you!", 'unread')
-    chat.add_message('lin', 'yousif', "okay enough", 'unread')
+    #chat.add_message('yousif', 'lin', "....................", 'unread')
 
-    print("All messages")
-    chat.print_all()
+    #chat.add_message('lin', 'yousif', "hey how are you!", 'unread')
+    #chat.add_message('lin', 'yousif', "okay enough", 'unread')
 
-    print("\nYousif's unread messages")
-    messages = chat.get_all_unread("yousif")
-    print(*messages, sep='\n')
+    #print("All messages")
+    #chat.print_all()
 
-    ids = [message[0] for message in messages]
-    chat.mark_read(ids)
-    print("Marking them all as read")
+    #print("\nYousif's unread messages")
+    #messages = chat.get_all_unread("yousif")
+    #print(*messages, sep='\n')
 
-    print("\nYousif's unread messages")
-    messages = chat.get_all_unread("yousif")
-    print(*messages, sep='\n')
+    #ids = [message[0] for message in messages]
+    #chat.mark_read(ids)
+    #print("Marking them all as read")
 
-    print("\nlin's unread messages")
-    messages = chat.get_all_unread("lin")
-    print(*messages, sep='\n')
+    #print("\nYousif's unread messages")
+    #messages = chat.get_all_unread("yousif")
+    #print(*messages, sep='\n')
 
-    ids = messages[0][0]
-    chat.mark_read(ids)
-    print("Marking the first one as read!")
+    #print("\nlin's unread messages")
+    #messages = chat.get_all_unread("lin")
+    #print(*messages, sep='\n')
 
-    print("\nlin's unread messages")
-    messages = chat.get_all_unread("lin")
-    print(*messages, sep='\n')
+    #ids = messages[0][0]
+    #chat.mark_read(ids)
+    #print("Marking the first one as read!")
+
+    #print("\nlin's unread messages")
+    #messages = chat.get_all_unread("lin")
+    #print(*messages, sep='\n')
