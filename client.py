@@ -344,7 +344,7 @@ class Send(threading.Thread):
                     # Messages that are sent and received 
                     #==============================================
                     for i,j in all_msg.items():
-                        print('i: {}'.format(m))
+                        print('{}: {}'.format(i, j))
 
                     self.sock.sendall(msg.encode())
                 except:
