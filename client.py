@@ -357,7 +357,7 @@ class Send(threading.Thread):
                             print(f"Connected to: {self.username} at {self.ip}")
                     else:
 
-                        history = ChatHistory(my_username, self.username)
+                        # history = ChatHistory(my_username, self.username)
                         print(f"Connected to: {self.username} at {self.ip}")
 
                 # Send message
@@ -368,6 +368,7 @@ class Send(threading.Thread):
                     for i, j in all_msg.items():
                         print('{}: {}'.format(i, j))
 
+                    history = ChatHistory(my_username, self.username)
                     self.sock.sendall(msg.encode())
                     history.add_message(my_username, self.username, msg, 'read')
 
