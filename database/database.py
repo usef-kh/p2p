@@ -39,11 +39,19 @@ class Discovery:
             print('username exists')
             return False
 
+        # If anyone is logged in at this IP, log them out.
+        command = 'update discovery ' + \
+                  f"SET status = 'offline'" + \
+                  f"WHERE IP = '{IP}'"
+
+        self.cursor.execute(command)
+
         command = 'INSERT INTO discovery ' + \
                   '(username, password, IP, status) VALUES ' + \
                   f"('{username}', '{password}', '{IP}', '{status}')"
 
         self.cursor.execute(command)
+
         self.conn.commit()
 
         return True
@@ -61,7 +69,7 @@ class Discovery:
         return self.cursor.fetchall()
 
     def convert_IP_to_Username(self, IP):
-        self.cursor.execute(f"SELECT username FROM discovery WHERE IP = '{IP}'")
+        self.cursor.execute(f"SELECT username FROM discovery WHERE IP = '{IP}' AND status = 'online'")
 
         result = self.cursor.fetchall()
         if len(result) == 1:
@@ -70,9 +78,10 @@ class Discovery:
             return False
 
     def convert_Username_to_IP(self, username):
-        self.cursor.execute(f"SELECT IP FROM discovery WHERE username = '{username}'")
+        self.cursor.execute(f"SELECT IP FROM discovery WHERE username = '{username}' AND status = 'online'")
 
         result = self.cursor.fetchall()
+
         if len(result) == 1:
             return result[0][0]
         else:

@@ -147,6 +147,17 @@ class Server(threading.Thread):
                     msg = "Not found"
                     self.conn.sendall(msg.encode())
 
+            elif response.find("username") != -1:
+                ip = response.split('-')[1].strip()
+                username = discovery.convert_IP_to_Username(ip)
+                print(username)
+                if username:
+                    self.conn.sendall(username.encode())
+                else:
+                    print("IP not found")
+                    msg = "Not found"
+                    self.conn.sendall(msg.encode())
+
 
 
 
