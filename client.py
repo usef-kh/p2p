@@ -100,9 +100,7 @@ class Chat(threading.Thread):
                         active_chat = self.addr[0]
                         handshake = 1
 
-                        # Who am I talking to
-                        self.username = get_username(self.addr[0])
-                        history = ChatHistory(my_username, self.username)
+
 
                     # If user doesn't want to chat, respond "No", and exit thread
                     else:
@@ -126,6 +124,12 @@ class Chat(threading.Thread):
                     # ==============================================
                     # Storing messages that you receive
                     # ==============================================
+
+                    # Who am I talking to
+                    self.username = get_username(self.addr[0])
+
+                    # i hate the fact that we are making a new instance with every message
+                    history = ChatHistory(my_username, self.username)
 
                     message = msg.decode()  # extract message
                     history.add_message(self.username, my_username, message, 'read')  # store in db
