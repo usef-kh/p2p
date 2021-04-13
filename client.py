@@ -9,6 +9,8 @@ import time
 
 import requests
 
+from database.database import ChatHistory
+
 SERVER_HOST = "18.224.190.128"  # IP of the server
 PORT = 7070
 
@@ -64,6 +66,7 @@ class Chat(threading.Thread):
         self.conn = conn
         self.addr = addr
         self.sock = sock
+        self.username = None
 
     def run(self):
 
@@ -97,6 +100,10 @@ class Chat(threading.Thread):
                         active_chat = self.addr[0]
                         handshake = 1
 
+                        # Who am I talking to
+                        self.username = get_username(self.addr[0])
+                        history = ChatHistory(my_username, self.username)
+
                     # If user doesn't want to chat, respond "No", and exit thread
                     else:
                         msg = "No"
@@ -119,10 +126,13 @@ class Chat(threading.Thread):
                     # ==============================================
                     # Storing messages that you receive
                     # ==============================================
-                    all_msg['history'] = msg.decode()  # store as a key-value in global all_msg
 
-                    print(self.addr[0] + ": " + msg.decode())
+                    message = msg.decode()  # extract message
+                    history.add_message(self.username, my_username, message, 'read')  # store in db
+                    print(self.username + ": " + message)  # show message
                     print(">> ")
+
+                    all_msg['history'] = msg.decode()  # store as a key-value in global all_msg
 
 
 # Thread for listening for new connections
@@ -234,6 +244,7 @@ class Send(threading.Thread):
                     else:
                         new_chat = 0
                         active_chat = self.ip
+
                     continue
 
             # Create socket
@@ -339,9 +350,11 @@ class Send(threading.Thread):
                             self.ip = None
                             break
                         elif response.decode() == "Yes":
-                            print("Connected to: ", self.ip)
+                            print(f"Connected to: {self.username} at {self.ip}")
                     else:
-                        print("Connected to: ", self.ip)
+
+                        history = ChatHistory(my_username, self.username)
+                        print(f"Connected to: {self.username} at {self.ip}")
 
                 # Send message
                 try:
@@ -352,6 +365,8 @@ class Send(threading.Thread):
                         print('{}: {}'.format(i, j))
 
                     self.sock.sendall(msg.encode())
+                    history.add_message(my_username, self.username, msg, 'read')
+
                 except:
                     print("Something has gone wrong.")
                     break
