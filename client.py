@@ -19,7 +19,7 @@ handshake = 0       # Flag for communicating across threads: indicates if handsh
 once = 0            # Flag for communicating across threads: makes sure handshake message is only displayed once
 disconnect = 0      # Flag for communicating across threads: lets Send() thread know that user has disconnected
 
-
+all_msg = {}        # Global list to store all chat history
 
 
 # Thread for listening for messages from a specific location
@@ -99,6 +99,7 @@ class Chat(threading.Thread):
                     #==============================================
                     # Storing messages that you receive
                     #==============================================
+                    all_msg['history'] = msg.decode()    # store as a key-value in global all_msg
 
                     print(self.addr[0] + ": " + msg.decode())
                     print(">> ")
@@ -251,7 +252,15 @@ class Send(threading.Thread):
                         # Person is rejected, can prompt them to add messages
                         # that will be stored
                         #==============================================
+                        # Get user input
+                        print("Please leave a message to him/her.")
+                        leaved_msg = input(">> ")
+                        # the leaved msg will be stored in global all_msg
+                        all_msg['leaved'] = leaved_msg
+
+
                         continue
+
                     elif response.decode() == "Yes":
                         print("Connected to: ", self.ip)
                 else:
@@ -334,6 +343,8 @@ class Send(threading.Thread):
                     #==============================================
                     # Messages that are sent and received 
                     #==============================================
+                    for i,j in all_msg.items():
+                        print('i: {}'.format(m))
 
                     self.sock.sendall(msg.encode())
                 except:
