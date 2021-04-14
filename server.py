@@ -7,7 +7,7 @@ import socket
 import threading
 import time
 
-from database.database import Discovery
+from database.discovery import Discovery
 
 online_ips = []
 PORT = 7070
@@ -108,7 +108,6 @@ class Server(threading.Thread):
 
         return data.decode()
 
-
     def run(self):
 
         # Create socket
@@ -190,11 +189,6 @@ class Server(threading.Thread):
                         self.conn.sendall(msg.encode())
             except:
                 print("Ignoring a broken pipe...")
-
-
-
-
-
 
 
 if __name__ == '__main__':
