@@ -3,27 +3,27 @@
 # P2P Client
 # =================================================
 
-import socket
-import threading
-import time
-import sys
 import os
 import signal
+import socket
+import sys
+import threading
+import time
 
 import requests
 
-from database.database import ChatHistory
+from database.chathistory import ChatHistory
 
 SERVER_HOST = "18.224.190.128"  # IP of the server
 PORT = 7070
 
-active_chat = None    # IP of the active chat
-new_chat = None       # Flag for communicating across threads if new chat has been started
-created = 1           # Flag for communicating across threads:
-                      # tells Listen() thread if a Chat() thread needs to be created
-handshake = 0         # Flag for communicating across threads: indicates if handshake for chat has been made
-once = 0              # Flag for communicating across threads: makes sure handshake message is only displayed once
-disconnect = 0        # Flag for communicating across threads: lets Send() thread know that user has disconnected
+active_chat = None      # IP of the active chat
+new_chat = None         # Flag for communicating across threads if new chat has been started
+created = 1             # Flag for communicating across threads:
+                        # tells Listen() thread if a Chat() thread needs to be created
+handshake = 0           # Flag for communicating across threads: indicates if handshake for chat has been made
+once = 0                # Flag for communicating across threads: makes sure handshake message is only displayed once
+disconnect = 0          # Flag for communicating across threads: lets Send() thread know that user has disconnected
 
 my_ip = requests.get('https://api.ipify.org').text
 my_username = None
@@ -68,11 +68,12 @@ def is_online(username):
         sock.sendall(request.encode())
         msg = sock.recv(1024)
         if msg.decode() == "0":
-            #print("User is not online")
+            # print("User is not online")
             return False
         else:
-            #print("User is online")
+            # print("User is online")
             return True
+
 
 # Tells server that you are no longer online
 def offline():
@@ -82,6 +83,7 @@ def offline():
     if msg.decode() == '?':
         request = "offline - " + my_ip
         sock.sendall(request.encode())
+
 
 def is_username(username):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -95,8 +97,9 @@ def is_username(username):
             print("This is not a valid username.")
             return False
         else:
-            #print("User is online")
+            # print("User is online")
             return True
+
 
 # Thread for listening for messages from a specific location
 class Chat(threading.Thread):
@@ -266,7 +269,6 @@ class Send(threading.Thread):
                 full_msg = msg[2] + ": " + msg[1]
                 self.sock.sendall(full_msg.encode())
                 history.mark_read(msg[0])
-                
 
     # Run sending thread
     def run(self):
@@ -277,7 +279,6 @@ class Send(threading.Thread):
         while True:
             time.sleep(0.5)
 
-            
             if self.backlog:
                 msg = input(">> ")
 
@@ -314,7 +315,6 @@ class Send(threading.Thread):
                         new_chat = 0
                         active_chat = self.ip
                     continue
-
 
             # Check for new IP
             if not active_chat:
@@ -404,7 +404,7 @@ class Send(threading.Thread):
                     else:
                         active_chat = self.ip
                         print(f"Connected to: {self.username}\n")
-                        
+
                         # Send any backlog messages
                         self.send_backlog()
 
@@ -508,7 +508,7 @@ class Send(threading.Thread):
                                 break
                             elif response.decode() == "Yes":
                                 print(f"Connected to: {self.username}\n")
-                                
+
                                 # Send any backlog messages
                                 self.send_backlog()
 
@@ -592,7 +592,6 @@ if __name__ == '__main__':
 
     try:
         if SignIn():
-
             listen = Listen()
             listen.daemon = True
             listen.start()
