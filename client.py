@@ -12,7 +12,7 @@ import time
 
 import requests
 
-from database.chathistory import ChatHistory
+from databases.chathistory import ChatHistory
 
 SERVER_HOST = "18.224.190.128"  # IP of the server
 PORT = 7070

@@ -1,3 +1,6 @@
+import sqlite3
+
+
 class Discovery:
 
     def __init__(self, path="discovery.db"):
@@ -106,6 +109,7 @@ class Discovery:
         if username in self:
             return True
         return False
+
 
 if __name__ == '__main__':
     discovery = Discovery()
