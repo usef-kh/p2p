@@ -7,7 +7,7 @@ import socket
 import threading
 import time
 
-from database.discovery import Discovery
+from databases.discovery import Discovery
 
 online_ips = []
 PORT = 7070

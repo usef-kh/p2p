@@ -12,7 +12,7 @@ import time
 
 import requests
 
-from database.chathistory import ChatHistory
+from databases.chathistory import ChatHistory
 
 SERVER_HOST = "18.224.190.128"  # IP of the server
 PORT = 7070
@@ -201,7 +201,6 @@ class Listen(threading.Thread):
             # Accept connection
             conn, addr = self.sock.accept()
 
-            # New user wants to chat
             if (not active_chat or addr[0] != active_chat) and addr[0] != SERVER_HOST and not once:
                 once = 1
 
@@ -336,6 +335,10 @@ class Send(threading.Thread):
                 # If response is a username, save it
                 if not new_chat:
 
+                    if response == my_username:
+                        print("You cannot connect to yourself. Please try again.")
+                        continue
+
                     # Check if valid username
                     if not is_username(response):
                         print("Please try again.")
@@ -432,6 +435,10 @@ class Send(threading.Thread):
 
                 # Get new IP
                 if not active_chat and not new_chat:
+
+                    if response == my_username:
+                        print("You cannot connect to yourself. Please try again.")
+                        continue
 
                     # Check if valid username
                     if not is_username(response):
