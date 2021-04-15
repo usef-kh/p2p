@@ -1,10 +1,10 @@
 # P2P 
 
-## [Demo](https://drive.google.com/file/d/1egsW_gBEp57Sfdgwkbt5SYswt0koc13Z/view?usp=sharing)
-
 ## Overview
 
 This repository contains a peer-to-peer chat Python program. It consists of a centralized server to coordinate login and user discovery and individual clients that can store chat data and send messages directly to each other. SQLite is used to store user data in the server and chat data in the clients.
+
+[Demo](https://drive.google.com/file/d/1egsW_gBEp57Sfdgwkbt5SYswt0koc13Z/view?usp=sharing)
 
 ## Setup
 
