@@ -1,5 +1,9 @@
 # P2P 
 
+## [Demo](https://drive.google.com/file/d/1egsW_gBEp57Sfdgwkbt5SYswt0koc13Z/view?usp=sharing)
+
+## Overview
+
 This repository contains a peer-to-peer chat Python program. It consists of a centralized server to coordinate login and user discovery and individual clients that can store chat data and send messages directly to each other. SQLite is used to store user data in the server and chat data in the clients.
 
 ## Setup
@@ -15,3 +19,7 @@ The clients will first be greeted by a welcome message that informs them how to 
 After they are signed in, if any other users are currently online, the newly connected user will be informed of their prescence. Already connected users will also receive a message from the server telling them which user has just connected. Users will be prompted to enter the username of the person they want to connect to. If this entered username is not in the database, they will be prompted to try again. If the username is in the database, but marked offline, the user will be allowed to enter chat messages to be stored and sent over the next time the two users connect. If the username is in the database and is marked online, the chat will attempt to connect them.
 
 The peer that the user requested a chat with will be notified that someone wants to chat with them. They will have a chance to say yes or no. If they say yes, both users connect to each other and can begin talking. If the other users says no, the client who attempted to initialize the chat will have the opportunity to create a backlog of messages that will be sent over next time they connect. While chatting, either user can disconnect at any time by typing `disconnect`. If one person does this, the other will be notified that the user has left the chat. Users will also be notified if the other user completely logs out.
+
+## Contact 
+- Yousif Khaireddin ykh@bu.edu
+- 
