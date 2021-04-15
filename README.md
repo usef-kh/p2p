@@ -22,5 +22,5 @@ The peer that the user requested a chat with will be notified that someone wants
 
 ## Contact 
 - Yousif Khaireddin ykh@bu.edu
-- Mckenna Damschroder mcdam@bu.edu
+- McKenna Damschroder mckdam@bu.edu
 - Lin Chen chengl11@bu.edu
